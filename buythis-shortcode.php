@@ -11,7 +11,7 @@
 	* Plugin Name:       Buythis Shortcode
 	* Plugin URI:        https://github.com/Fulfillment-Global/buythis-shortcode/
 	* Description:       This plugin provides an interface between Wordpress and Buythis.co.za
-	* Version:           1.1
+	* Version:           1.21
 	* Requires at least: 5.2
 	* Requires PHP:      7.2
 	* Author:            Fulfillment Global Corporation
@@ -60,7 +60,17 @@
 		}
 
 		function buythis_shortcode_data( $sku ) {
-			return buythis_shortcode_cache_api( "https://data.buythis.co.za/product/$sku.json" );
+			static $data = null;
+			if ( $data === null ) {
+				$data = buythis_shortcode_cache_api( "https://data.buythis.co.za/product/$sku.json" );
+				if ( isset( $data->price->regular ) ) {
+					$data->price->regular = round($data->price->regular * 1.15, 2);
+				}
+				if ( isset( $data->price->sale ) ) {
+					$data->price->sale = round($data->price->sale * 1.15, 2);
+				}
+			}
+			return $data;
 		}
 
 		function buythis_shortcode_display( $sku ) {
@@ -74,27 +84,35 @@
 		}
 
 		function buythis_shortcode_price( $sku ) {
-			return buythis_shortcode_cache_api( "https://data.buythis.co.za/product/$sku/price.json" );
+			static $data = null;
+			if ( $data === null ) {
+				$data = buythis_shortcode_cache_api( "https://data.buythis.co.za/product/$sku/price.json" );
+				foreach ( $data as &$price ) {
+					if ( isset( $price->regular ) ) {
+						$price->regular = round($price->regular * 1.15, 2);
+					}
+					if ( isset( $price->sale ) ) {
+						$price->sale = round($price->sale * 1.15, 2);
+					}
+				}
+			}
+			return $data;
 		}
 
 		function buythis_shortcode_normalize( $sku, $path, $affiliate_id ) {
-			$default_format = function( $idempotent ) {
-				return $idempotent;
-			};
-			$currency_format = function ($number) {
-				return is_numeric( $number )
+			$default_format = fn( $idempotent ) => $idempotent;
+			$currency_format = fn( $number ) =>
+				is_numeric( $number )
 					? 'R ' . number_format( $number, 0, '.', ' ' )
 					: null;
-			};
-			$parse_blocks_format = function( $content ) use ( $sku, $affiliate_id ) {
-				return do_blocks(
+			$do_blocks_format = fn( $content ) =>
+				do_blocks(
 					str_replace(
 						'buybuybuy',
 						buythis_shortcode_parse( $sku, 'other.affiliate', $affiliate_id ),
 						$content
 					)
 				);
-			};
 
 			$format = $default_format;
 
@@ -103,7 +121,7 @@
 					$fields = array(
 						'display.content'
 					);
-					$format = $parse_blocks_format;
+					$format = $do_blocks_format;
 					break;
 
 				case 'link':
@@ -186,6 +204,7 @@
 
 			$result = null;
 
+			$data = null;
 			foreach ( $fields as $field ) {
 				// Parse source from path
 				if ( 'data.' === substr( $field, 0, strlen( 'data.' ) ) ) {
@@ -215,6 +234,9 @@
 				break;
 			}
 
+			if ( $data === $result || is_array( $result ) || is_object( $result ) ) {
+				$result = null;
+			}
 			$result = $format( $result ) ?? __( 'Invalid value', 'buythis-shortcode' );
 			return $result;
 		}

@@ -72,11 +72,19 @@
 	# Begin: Run tests
 	# ----------------
 
-	test(['sku' => 'a-chiller-1400', 'value' => 'name', 'affiliate' => 'xxx'], 'Generic AM-5200 1400W Refrigeration Industrial Water Chiller 5000Btu/h, Max.Pump Flow 10L/min and Lift 10 Metres');
-	test(['sku' => 'a-chiller-1400', 'value' => 'link', 'affiliate' => 'xxx'], 'https://buythis.co.za/a-chiller-1400#xxx');
-	test(['sku' => 'a-chiller-1400', 'value' => 'link_name', 'affiliate' => 'xxx'], '<a href="https://buythis.co.za/a-chiller-1400#xxx">Generic AM-5200 1400W Refrigeration Industrial Water Chiller 5000Btu/h, Max.Pump Flow 10L/min and Lift 10 Metres</a>');
-	test(['sku' => 'a-chiller-1400', 'value' => 'price', 'affiliate' => 'xxx'], 'R 9 499');
-	# test(['sku' => 'a-chiller-1400', 'value' => 'content', 'affiliate' => 'xxx']);
+	# Positive tests
+	test(['sku' => 'V-800P', 'value' => 'link', 'affiliate' => 'cornerstone'], 'https://buythis.co.za/v-800p#cornerstone');
+	test(['sku' => 'V-800P', 'value' => 'link_name', 'affiliate' => 'cornerstone'], '<a href="https://buythis.co.za/v-800p#cornerstone">AM.CO.ZA&reg; V-Series&trade; High-Pressure High-Speed USB Vinyl Cutter with 800mm Working Area</a>');
+	test(['sku' => 'V-800P', 'value' => 'name', 'affiliate' => 'cornerstone'], 'AM.CO.ZA&reg; V-Series&trade; High-Pressure High-Speed USB Vinyl Cutter with 800mm Working Area');
+	test(['sku' => 'V-800P', 'value' => 'price', 'affiliate' => 'cornerstone'], 'R 6 094');
+	test(['sku' => 'V-800P', 'value' => 'price.2022-02-22.sale', 'affiliate' => 'cornerstone'], '6438.85');
+	# test(['sku' => 'V-800P', 'value' => 'content', 'affiliate' => 'cornerstone']);
+
+	# Negative tests
+	test(['sku' => 'V-800P', 'value' => 'data.invalid.value', 'affiliate' => 'cornerstone'], 'Invalid value');
+	test(['sku' => 'V-800P', 'value' => 'data.price.regular', 'affiliate' => 'cornerstone'], 'Invalid value');
+	test(['sku' => 'V-800P', 'value' => 'invalid', 'affiliate' => 'cornerstone'], 'Invalid value');
+	test(['sku' => 'V-800P', 'value' => 'price.sale', 'affiliate' => 'cornerstone'], 'Invalid value');
 
 	if (test())
 		echo 'all tests succeeded', "\n";
