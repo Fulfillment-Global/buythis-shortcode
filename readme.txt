@@ -13,7 +13,7 @@ Buythis Shortcode
 
 == Third party service description ==
 
-This plugin provides an interface between Wordpress and [Buythis.co.za](https://buythis.co.za]).
+This plugin provides a shortcode to interface between Wordpress and [Buythis.co.za](https://buythis.co.za]).
 
 This plugin relies on [Buythis.co.za](https://buythis.co.za]) as a third party service, in order for the plugin to work.
 
@@ -31,6 +31,7 @@ Links to the third party service:
 
 [https://buythis.co.za](https://buythis.co.za)
 [https://data.buythis.co.za](https://data.buythis.co.za)
+[Data definition](https://stoplight.io/api/v1/projects/fulfillment/fulfillment-codes-database/nodes/Models/product.v1.json)
 
 Third party services' terms of use and privacy policies:
 
@@ -48,6 +49,8 @@ To use the Buythis Shortcode plugin:
 `[buythis sku="sku" value="path" affiliate="affiliate_id"]`
 
 The provided `affiliate_id` is used to generate revenue for a given affiliate, by using this plugin's `[buythis]` shortcode on their WordPress site.
+
+A site-wide default Affiliate ID can be configured on the Buythis Shortcode settings page, that will be used as a fallback value for the `affiliate_id` attribute, should one not be provided. This makes it easy to change the affiliate ID for a site, and prevents the need to duplicate the `affiliate_id` in each usage of the shortcode.
 
 Depending on the ***path*** specified in the `value` parameter, one or more API calls will be made to the following endpoints (sources), where ***[sku]*** is the provided `sku` parameter:
 

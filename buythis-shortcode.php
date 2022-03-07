@@ -11,7 +11,7 @@
 	* Plugin Name:       Buythis Shortcode
 	* Plugin URI:        https://github.com/Fulfillment-Global/buythis-shortcode/
 	* Description:       This plugin provides an interface between Wordpress and Buythis.co.za
-	* Version:           1.21
+	* Version:           1.3
 	* Requires at least: 5.2
 	* Requires PHP:      7.2
 	* Author:            Fulfillment Global Corporation
@@ -24,7 +24,9 @@
 	* GitHub Branch:     master
 	*/
 
-	if ( !function_exists( 'buythis_shortcode' ) ) {
+	if ( ! defined( 'buythis_shortcode' ) ) {
+		define( 'buythis_shortcode', 1 );
+
 		function buythis_shortcode( $atts ) {
 			$atts = shortcode_atts(
 				array(
@@ -39,16 +41,20 @@
 			$sku = preg_replace( '/\W+/', '-', strtolower( $atts['sku'] ) );
 			$path = trim( $atts['value'] );
 			$affiliate_id = trim( $atts['affiliate'] );
+			if ( ! $affiliate_id ) {
+				$options = get_option( 'buythis_shortcode_options' );
+				$affiliate_id = $options['default_affiliate_id'];
+			}
 
 			$result = buythis_shortcode_parse( $sku, $path, $affiliate_id );
 
-			return $result ?? __( 'SKU not found', 'buythis-shortcode' );
+			return $result;
 		}
 
 		function buythis_shortcode_cache_api( $url ) {
 			static $cache = [];
 
-			if ( !isset( $cache[ $url ] ) ) {
+			if ( ! isset( $cache[ $url ] ) ) {
 				$body = wp_remote_retrieve_body( wp_remote_get( $url ) );
 				$parsed = json_decode( $body );
 				if ( is_object ( $parsed ) ) {
@@ -161,7 +167,7 @@
 			return array( $fields, $format );
 		}
 
-		function buythis_shortcode_parse( $sku, $path, $affiliate_id = null ) {
+		function buythis_shortcode_parse( $sku, $path, $affiliate_id ) {
 			$path = trim($path);
 			$subpaths = null;
 
@@ -203,8 +209,9 @@
 			}
 
 			$result = null;
-
 			$data = null;
+			$valid = false;
+
 			foreach ( $fields as $field ) {
 				// Parse source from path
 				if ( 'data.' === substr( $field, 0, strlen( 'data.' ) ) ) {
@@ -234,13 +241,114 @@
 				break;
 			}
 
-			if ( $data === $result || is_array( $result ) || is_object( $result ) ) {
-				$result = null;
+			$valid = buythis_shortcode_schema_validate( $sku, $path, $affiliate_id );
+
+			if ( $result && $result !== $data && ! is_array( $result ) && ! is_object( $result ) ) {
+				return $format( $result );
+			} elseif ( $valid ) {
+				return '';
+			} else {
+				return __('Invalid Value Setting', 'buythis-shortcode');
 			}
-			$result = $format( $result ) ?? __( 'Invalid value', 'buythis-shortcode' );
-			return $result;
+		}
+
+		function buythis_shortcode_schema() {
+			// Download and cache data definition (i.e. schema)
+			static $schema_array = null;
+			if ( $schema_array === null ) {
+				$schema_array = get_option('buythis_shortcode_schema');
+			}
+			if ( ! $schema_array || $schema_array['time'] < time() - 60 * 60 * 7 ) {
+				$time = time();
+				$schema = json_decode(
+					wp_remote_retrieve_body(
+						wp_remote_get(
+							'https://stoplight.io/api/v1/projects/fulfillment/fulfillment-codes-database/nodes/Models/product.v1.json'
+						)
+					)
+				);
+				if ( is_object ( $schema ) ) {
+					$schema_array = [
+						'schema' => $schema,
+						'time' => $time
+					];
+					update_option('buythis_shortcode_schema', $schema_array);
+				}
+			}
+
+			return $schema_array && isset( $schema_array['schema'] ) ? $schema_array['schema'] : null;
+		}
+
+		function buythis_shortcode_schema_validate( $sku, $path, $affiliate_id ) {
+			// Obtain or generate schema for data source
+			$split = explode( '.', $path );
+			switch ( $split[0] ) {
+				case 'data':
+					$data = buythis_shortcode_data( $sku );
+					$schema = buythis_shortcode_schema();
+					break;
+
+				case 'display':
+					$data = buythis_shortcode_display( $sku );
+					$schema = buythis_shortcode_schema();
+					break;
+
+				case 'other':
+					$data = buythis_shortcode_other( $sku, $affiliate_id );
+					$schema = json_decode( json_encode(
+						[
+							'properties' => [
+								'affiliate' => [
+									'type' => 'string'
+								]
+							]
+						]
+					) );
+					break;
+
+				case 'price':
+					$data = buythis_shortcode_price( $sku );
+					$schema = json_decode( json_encode( [
+						'properties' =>
+							array_reduce(
+								array_keys( get_object_vars( $data ) ),
+								function( $carry, $date ) {
+									$carry[$date] = [
+										'properties' => [
+											'regular' => [
+												'type' => 'number'
+											],
+											'sale' => [
+												'type' => 'number'
+											]
+										]
+									];
+									return $carry;
+								},
+								[]
+							)
+					] ) );
+					break;
+
+				default:
+					return false;
+			}
+
+			// Validate path
+			$valid = true;
+			foreach ( array_slice( $split, 1 ) as $key ) {
+				$valid = $valid && ( isset( $schema->properties->$key ) );
+				if ( ! $valid ) {
+					break;
+				}
+				$schema = $schema->properties->$key;
+			}
+
+			return $valid && !isset( $schema->properties );
 		}
 
 		add_shortcode( 'buythis', 'buythis_shortcode' );
+
+		require __DIR__ . '/settings.php';
 	}
 ?>
