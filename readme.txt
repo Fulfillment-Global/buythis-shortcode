@@ -4,7 +4,7 @@ Donate link: https://buythis.co.za/
 Tags: buythis
 Requires at least: 5.2
 Tested up to: 5.9
-Stable tag: 1.21
+Stable tag: 1.4
 Requires PHP: 7.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html

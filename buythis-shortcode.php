@@ -11,7 +11,7 @@
 	* Plugin Name:       Buythis Shortcode
 	* Plugin URI:        https://github.com/Fulfillment-Global/buythis-shortcode/
 	* Description:       This plugin provides an interface between Wordpress and Buythis.co.za
-	* Version:           1.3
+	* Version:           1.4
 	* Requires at least: 5.2
 	* Requires PHP:      7.2
 	* Author:            Fulfillment Global Corporation
@@ -52,7 +52,7 @@
 		}
 
 		function buythis_shortcode_cache_api( $url ) {
-			static $cache = [];
+			static $cache = array();
 
 			if ( ! isset( $cache[ $url ] ) ) {
 				$body = wp_remote_retrieve_body( wp_remote_get( $url ) );
@@ -66,17 +66,17 @@
 		}
 
 		function buythis_shortcode_data( $sku ) {
-			static $data = null;
-			if ( $data === null ) {
-				$data = buythis_shortcode_cache_api( "https://data.buythis.co.za/product/$sku.json" );
-				if ( isset( $data->price->regular ) ) {
-					$data->price->regular = round($data->price->regular * 1.15, 2);
+			static $cache = array();
+			if ( ! isset( $cache[ $sku ] ) ) {
+				$cache[ $sku ] = buythis_shortcode_cache_api( "https://data.buythis.co.za/product/$sku.json" );
+				if ( isset( $cache[ $sku ]->price->regular ) ) {
+					$cache[ $sku ]->price->regular = round($cache[ $sku ]->price->regular * 1.15, 2);
 				}
-				if ( isset( $data->price->sale ) ) {
-					$data->price->sale = round($data->price->sale * 1.15, 2);
+				if ( isset( $cache[ $sku ]->price->sale ) ) {
+					$cache[ $sku ]->price->sale = round($cache[ $sku ]->price->sale * 1.15, 2);
 				}
 			}
-			return $data;
+			return $cache[ $sku ];
 		}
 
 		function buythis_shortcode_display( $sku ) {
@@ -90,10 +90,10 @@
 		}
 
 		function buythis_shortcode_price( $sku ) {
-			static $data = null;
-			if ( $data === null ) {
-				$data = buythis_shortcode_cache_api( "https://data.buythis.co.za/product/$sku/price.json" );
-				foreach ( $data as &$price ) {
+			static $cache = array();
+			if ( ! isset ( $cache[ $sku ] ) ) {
+				$cache[ $sku ] = buythis_shortcode_cache_api( "https://data.buythis.co.za/product/$sku/price.json" );
+				foreach ( $cache[ $sku ] as &$price ) {
 					if ( isset( $price->regular ) ) {
 						$price->regular = round($price->regular * 1.15, 2);
 					}
@@ -102,7 +102,7 @@
 					}
 				}
 			}
-			return $data;
+			return $cache[ $sku ];
 		}
 
 		function buythis_shortcode_normalize( $sku, $path, $affiliate_id ) {
@@ -174,7 +174,7 @@
 			// Handle round braces
 			if ( preg_match_all( '/\([^)]+\)/', $path, $subpaths, PREG_OFFSET_CAPTURE ) ) {
 				$subpaths = $subpaths[0];
-				$subresults = [];
+				$subresults = array();
 				foreach ( $subpaths as $subpath ) {
 					$subresults[] = buythis_shortcode_parse( $sku, substr( $subpath[0], 1, strlen($subpath[0]) - 2 ), $affiliate_id );
 				}
@@ -268,11 +268,11 @@
 					)
 				);
 				if ( is_object ( $schema ) ) {
-					$schema_array = [
+					$schema_array = array(
 						'schema' => $schema,
 						'time' => $time
-					];
-					update_option('buythis_shortcode_schema', $schema_array);
+					);
+					update_option( 'buythis_shortcode_schema', $schema_array );
 				}
 			}
 
@@ -308,26 +308,26 @@
 
 				case 'price':
 					$data = buythis_shortcode_price( $sku );
-					$schema = json_decode( json_encode( [
+					$schema = json_decode( json_encode( array(
 						'properties' =>
 							array_reduce(
 								array_keys( get_object_vars( $data ) ),
 								function( $carry, $date ) {
-									$carry[$date] = [
-										'properties' => [
-											'regular' => [
+									$carry[$date] = array(
+										'properties' => array(
+											'regular' => array(
 												'type' => 'number'
-											],
-											'sale' => [
+											),
+											'sale' => array(
 												'type' => 'number'
-											]
-										]
-									];
+											)
+										)
+									);
 									return $carry;
 								},
-								[]
+								array()
 							)
-					] ) );
+					) ) );
 					break;
 
 				default:
@@ -344,7 +344,7 @@
 				$schema = $schema->properties->$key;
 			}
 
-			return $valid && !isset( $schema->properties );
+			return $valid && ! isset( $schema->properties );
 		}
 
 		add_shortcode( 'buythis', 'buythis_shortcode' );
